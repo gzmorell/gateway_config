@@ -16,7 +16,7 @@
 
 using namespace ftxui;
 
-const auto button_style = ButtonOption::Animated(Color::Green);
+const auto button_style = ButtonOption::Animated();
 
 Component ModalComponent(std::function<void()> do_action,
                          std::function<void()> do_cancel,

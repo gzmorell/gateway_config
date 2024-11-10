@@ -212,16 +212,22 @@ int main()
     bool shown_save = false;
     auto run_exit = [&] {screen.Exit();};
     auto run_reboot = [&] {
-        subprocess::command cmd{"sudo reboot"};
-        cmd.run();
-    };
-    auto run_save= [&] {
-        subprocess::command cmd{"sudo lbu ci"};
+        subprocess::command cmd{"sudo /sbin/reboot"};
         try {
             cmd.run();
         } catch(...) {
-            ;
+            return;
         }
+        shown_save = false;
+    };
+    auto run_save= [&] {
+        subprocess::command cmd{"sudo /sbin/lbu ci"};
+        try {
+            cmd.run();
+        } catch(...) {
+            return;
+        }
+        shown_save = false;
     };
     auto cancel_exit = [&] { shown_exit = false; };
     auto show_exit = [&] { shown_exit = true; };

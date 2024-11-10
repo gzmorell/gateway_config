@@ -217,7 +217,11 @@ int main()
     };
     auto run_save= [&] {
         subprocess::command cmd{"sudo lbu ci"};
-        cmd.run();
+        try {
+            cmd.run();
+        } catch(...) {
+            ;
+        }
     };
     auto cancel_exit = [&] { shown_exit = false; };
     auto show_exit = [&] { shown_exit = true; };

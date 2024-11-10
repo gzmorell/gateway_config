@@ -8,14 +8,14 @@
 // #include <cmath>       // for sin
 #include <functional> // for ref, reference_wrapper, function
 // #include <memory>      // for allocator, shared_ptr, __shared_ptr_access
+#include <fstream>
+#include <nlohmann/json.hpp>
 #include <sstream>
 #include <string> // for string, basic_string, char_traits, operator+, to_string
 #include <string>
 #include <thread>  // for sleep_for, thread
 #include <utility> // for move
 #include <vector>  // for vector
-#include <fstream>
-#include <nlohmann/json.hpp>
 
 // #include "../dom/color_info_sorted_2d.ipp"  // for ColorInfoSorted2D
 #include "ftxui/component/component.hpp" // for Checkbox, Renderer, Horizontal, Vertical, Input, Menu, Radiobox, ResizableSplitLeft, Tab
@@ -31,6 +31,7 @@
 #include "subprocess.hpp"
 
 using namespace ftxui;
+using namespace subprocess::literals;
 
 const auto button_style = ButtonOption::Animated();
 
@@ -86,82 +87,13 @@ Component DummyWindowContent()
     public:
         Impl()
         {
-            auto content = Renderer([=] {
-                const std::string str =
-                    R"##(
-Oct 31 00:09:39 cm4 user.info : rmsMain: Gateway version:  "0.0.4"
-Oct 31 00:09:39 cm4 user.info : rmsMain: Command output:  0000000000000000000000000000000000000000000000000000000000000000
-Oct 31 00:09:39 cm4 user.info : rmsMain: Command output raw:  "0000000000000000000000000000000000000000000000000000000000000000"
-Oct 31 00:09:39 cm4 user.info : rmsMain: Command output size:  64
-Oct 31 00:09:39 cm4 user.info : rms.Settings: Settings loaded
-Oct 31 00:09:39 cm4 user.info : rms.Settings: Ils Address:  QHostAddress("192.168.1.156")
-Oct 31 00:09:39 cm4 user.info : rms.Settings: User:  "GATEWAY"  Password:  "GATEWAY1 GATEWAY2 GATEWAY3"
-Oct 31 00:09:39 cm4 user.info : rms.Parameters: Parameters definitions loaded
-Oct 31 00:09:39 cm4 user.info : rms.Commands: Commands definitions loaded
-Oct 31 00:09:39 cm4 user.info : rms.Engine: Engine Start
-Oct 31 00:09:39 cm4 user.info : rms.Engine: Modbus server started
-Oct 31 00:09:39 cm4 user.info : rms.Engine: onEntry:  "rmmEngine"
-Oct 31 00:09:39 cm4 user.info : rms.Engine: onEntry:  "rmmDisconnected"
-Oct 31 00:09:39 cm4 user.info : rms.Engine: onEntry:  "ilsEngine"
-Oct 31 00:09:39 cm4 user.info : rms.Engine: onEntry:  "ilsDisconnected"
-Oct 31 00:09:39 cm4 user.info : rms.Engine: onEntry:  "ilsUnlinked"
-Oct 31 00:09:39 cm4 user.info : rms.Engine: onEntry:  "ilsLinked"
-Oct 31 00:09:39 cm4 user.info : rms.Engine: onEntry:  "logoutState"
-Oct 31 00:09:39 cm4 user.info : rms.Engine: onEntry:  "logonState"
-Oct 31 00:09:40 cm4 user.info : rms.Engine: onEntry:  "loggedState"
-Oct 31 00:09:40 cm4 user.info : rms.Engine: onEntry:  "setupState"
-Oct 31 12:41:50 cm4 user.info : rms.Engine: Stopping Engine
-Oct 31 12:41:50 cm4 user.info : rms.Engine: Engine Stopped
-Nov  7 02:29:35 cm4 user.info : rmsMain: Gateway version:  "0.0.4"
-Nov  7 02:29:35 cm4 user.info : rmsMain: Command output:  0000000000000000000000000000000000000000000000000000000000000000
-Nov  7 02:29:35 cm4 user.info : rmsMain: Command output raw:  "0000000000000000000000000000000000000000000000000000000000000000"
-Nov  7 02:29:35 cm4 user.info : rmsMain: Command output size:  64
-Nov  7 02:29:35 cm4 user.info : rms.Settings: Settings loaded
-Nov  7 02:29:35 cm4 user.info : rms.Settings: Ils Address:  QHostAddress("192.168.1.156")
-Nov  7 02:29:35 cm4 user.info : rms.Settings: User:  "GATEWAY"  Password:  "GATEWAY1 GATEWAY2 GATEWAY3"
-Nov  7 02:29:35 cm4 user.info : rms.Parameters: Parameters definitions loaded
-Nov  7 02:29:35 cm4 user.info : rms.Commands: Commands definitions loaded
-Nov  7 02:29:35 cm4 user.info : rms.Engine: Engine Start
-Nov  7 02:29:35 cm4 user.info : rms.Engine: Modbus server started
-Nov  7 02:29:35 cm4 user.info : rms.Engine: onEntry:  "rmmEngine"
-Nov  7 02:29:35 cm4 user.info : rms.Engine: onEntry:  "rmmDisconnected"
-Nov  7 02:29:35 cm4 user.info : rms.Engine: onEntry:  "ilsEngine"
-Nov  7 02:29:35 cm4 user.info : rms.Engine: onEntry:  "ilsDisconnected"
-Nov  7 02:29:35 cm4 user.info : rms.Engine: onEntry:  "ilsUnlinked"
-Nov  7 02:29:35 cm4 user.info : rms.Engine: onEntry:  "ilsLinked"
-Nov  7 02:29:35 cm4 user.info : rms.Engine: onEntry:  "logoutState"
-Nov  7 02:29:36 cm4 user.info : rms.Engine: onEntry:  "logonState"
-Nov  7 02:29:36 cm4 user.info : rms.Engine: onEntry:  "loggedState"
-Nov  7 02:29:36 cm4 user.info : rms.Engine: onEntry:  "setupState"
-Nov  7 02:29:42 cm4 user.info : rms.Engine: Stopping Engine
-Nov  7 02:29:42 cm4 user.info : rms.Engine: Engine Stopped
-Nov  7 15:55:06 cm4 user.info : rmsMain: Gateway version:  "0.0.4"
-Nov  7 15:55:06 cm4 user.info : rmsMain: Command output:  0000000000000000000000000000000000000000000000000000000000000000
-Nov  7 15:55:06 cm4 user.info : rmsMain: Command output raw:  "0000000000000000000000000000000000000000000000000000000000000000"
-Nov  7 15:55:06 cm4 user.info : rmsMain: Command output size:  64
-Nov  7 15:55:06 cm4 user.info : rms.Settings: Settings loaded
-Nov  7 15:55:06 cm4 user.info : rms.Settings: Ils Address:  QHostAddress("192.168.1.156")
-Nov  7 15:55:06 cm4 user.info : rms.Settings: User:  "GATEWAY"  Password:  "GATEWAY1 GATEWAY2 GATEWAY3"
-Nov  7 15:55:07 cm4 user.info : rms.Parameters: Parameters definitions loaded
-Nov  7 15:55:07 cm4 user.info : rms.Commands: Commands definitions loaded
-Nov  7 15:55:07 cm4 user.info : rms.Engine: Engine Start
-Nov  7 15:55:07 cm4 user.info : rms.Engine: Modbus server started
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "rmmEngine"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "rmmDisconnected"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "ilsEngine"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "ilsDisconnected"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "ilsUnlinked"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "ilsLinked"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "logoutState"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "logonState"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "loggedState"
-Nov  7 15:55:07 cm4 user.info : rms.Engine: onEntry:  "setupState"
-Nov  7 15:56:49 cm4 user.info : rms.Engine: Stopping Engine
-Nov  7 15:56:49 cm4 user.info : rms.Engine: Engine Stopped
-)##";
-
-                return nonWrappingParagraph(str);
-            });
+            std::string str;
+            try {
+                ("cat /var/log/messages"_cmd | "grep rms"_cmd > str).run();
+            } catch (...) {
+                str = "No messages";
+            }
+            auto content = Renderer([=] { return nonWrappingParagraph(str); });
 
             auto scrollable_content = Renderer(content, [&, content] {
                 return content->Render() | focusPositionRelative(scroll_x, scroll_y) | frame | flex;
@@ -210,21 +142,21 @@ int main()
     bool shown_exit = false;
     bool shown_reboot = false;
     bool shown_save = false;
-    auto run_exit = [&] {screen.Exit();};
+    auto run_exit = [&] { screen.Exit(); };
     auto run_reboot = [&] {
         subprocess::command cmd{"sudo /sbin/reboot"};
         try {
             cmd.run();
-        } catch(...) {
+        } catch (...) {
             return;
         }
         shown_save = false;
     };
-    auto run_save= [&] {
+    auto run_save = [&] {
         subprocess::command cmd{"sudo /sbin/lbu ci"};
         try {
             cmd.run();
-        } catch(...) {
+        } catch (...) {
             return;
         }
         shown_save = false;
@@ -234,13 +166,13 @@ int main()
     auto cancel_reboot = [&] { shown_reboot = false; };
     auto show_reboot = [&] { shown_reboot = true; };
     auto cancel_save = [&] { shown_save = false; };
-    auto show_save= [&] { shown_save = true; };
+    auto show_save = [&] { shown_save = true; };
     const std::string &label_exit = "Exit";
     const std::string &label_reboot = "Reboot";
     const std::string &label_save = "Save";
     auto component_exit = ModalComponent(run_exit, cancel_exit, label_exit);
     auto component_reboot = ModalComponent(run_reboot, cancel_reboot, label_reboot);
-    auto component_save= ModalComponent(run_save, cancel_save, label_save);
+    auto component_save = ModalComponent(run_save, cancel_save, label_save);
 
     // ---------------------------------------------------------------------------
     // Compiler
@@ -406,7 +338,6 @@ int main()
                | flex_grow;
     });
 
-
     // ---------------------------------------------------------------------------
     // Tabs
     // ---------------------------------------------------------------------------
@@ -426,7 +357,7 @@ int main()
 
     auto button_exit = Button(label_exit, show_exit, ButtonOption::Animated());
     auto button_reboot = Button(label_reboot, show_reboot, ButtonOption::Animated());
-    auto button_save= Button(label_save, show_save, ButtonOption::Animated());
+    auto button_save = Button(label_save, show_save, ButtonOption::Animated());
 
     auto main_container = Container::Vertical({
         Container::Horizontal({

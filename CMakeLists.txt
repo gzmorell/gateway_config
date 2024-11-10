@@ -21,9 +21,24 @@ FetchContent_Declare(ftxui
   GIT_TAG        v5.0.0
   GIT_PROGRESS   TRUE
   GIT_SHALLOW    TRUE
-  EXCLUDE_FROM_ALL
 )
+
+FetchContent_Declare(ftxui-ip-input
+  GIT_REPOSITORY https://github.com/mingsheng13/ip-input-ftxui.git
+  GIT_TAG main
+  GIT_PROGRESS TRUE
+  GIT_SHALLOW  TRUE
+)
+FetchContent_Declare(json 
+  URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+  GIT_PROGRESS TRUE
+)
+
 FetchContent_MakeAvailable(ftxui)
+FetchContent_MakeAvailable(ftxui-ip-input)
+FetchContent_MakeAvailable(json)
+
+
 # ------------------------------------------------------------------------------
 
 add_executable(gateway-config src/main.cpp)
@@ -33,5 +48,6 @@ target_link_libraries(gateway-config
   PRIVATE ftxui::screen
   PRIVATE ftxui::dom
   PRIVATE ftxui::component  # Not needed for this example.
+  PRIVATE ftxui-ip-input
+  PRIVATE nlohmann_json::nlohmann_json
 )
-

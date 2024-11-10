@@ -1,0 +1,8 @@
+{
+    "version": "2.0.0",
+    "tasks": [{
+        "label": "run",
+        "command": "build/Debug/gateway-config",
+        "type": "shell"
+    }]
+}

@@ -209,19 +209,28 @@ int main()
     int shift = 0;
     bool shown_exit = false;
     bool shown_reboot = false;
+    bool shown_save = false;
     auto run_exit = [&] {screen.Exit();};
     auto run_reboot = [&] {
         subprocess::command cmd{"sudo reboot"};
+        cmd.run();
+    };
+    auto run_save= [&] {
+        subprocess::command cmd{"sudo lbu ci"};
         cmd.run();
     };
     auto cancel_exit = [&] { shown_exit = false; };
     auto show_exit = [&] { shown_exit = true; };
     auto cancel_reboot = [&] { shown_reboot = false; };
     auto show_reboot = [&] { shown_reboot = true; };
+    auto cancel_save = [&] { shown_save = false; };
+    auto show_save= [&] { shown_save = true; };
     const std::string &label_exit = "Exit";
     const std::string &label_reboot = "Reboot";
+    const std::string &label_save = "Save";
     auto component_exit = ModalComponent(run_exit, cancel_exit, label_exit);
     auto component_reboot = ModalComponent(run_reboot, cancel_reboot, label_reboot);
+    auto component_save= ModalComponent(run_save, cancel_save, label_save);
 
     // ---------------------------------------------------------------------------
     // Compiler
@@ -407,10 +416,12 @@ int main()
 
     auto button_exit = Button(label_exit, show_exit, ButtonOption::Animated());
     auto button_reboot = Button(label_reboot, show_reboot, ButtonOption::Animated());
+    auto button_save= Button(label_save, show_save, ButtonOption::Animated());
 
     auto main_container = Container::Vertical({
         Container::Horizontal({
             tab_selection,
+            button_save,
             button_reboot,
             button_exit,
         }),
@@ -423,6 +434,8 @@ int main()
             hbox({
                 tab_selection->Render() | flex,
                 separatorEmpty(),
+                button_save->Render(),
+                separatorEmpty(),
                 button_reboot->Render(),
                 separatorEmpty(),
                 button_exit->Render(),
@@ -430,8 +443,9 @@ int main()
             tab_content->Render() | flex,
         });
     });
-    main_renderer |= Modal(component_exit, &shown_exit);
+    main_renderer |= Modal(component_save, &shown_save);
     main_renderer |= Modal(component_reboot, &shown_reboot);
+    main_renderer |= Modal(component_exit, &shown_exit);
 
     screen.Loop(main_renderer);
 

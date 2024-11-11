@@ -37,6 +37,28 @@ namespace fs = std::filesystem;
 
 const auto button_style = ButtonOption::Animated();
 
+// trim from start (in place)
+inline void ltrim(std::string &s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+                return !std::isspace(ch);
+            }));
+}
+
+// trim from end (in place)
+inline void rtrim(std::string &s)
+{
+    s.erase(
+        std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(),
+        s.end());
+}
+
+inline void trim(std::string &s)
+{
+    rtrim(s);
+    ltrim(s);
+}
+
 namespace ftxui {
 
 class ScrollerBase : public ComponentBase
@@ -193,12 +215,27 @@ Component GatewayConfig()
         ils_port = std::to_string(int(data["Ils"]["Port"]));
         server_port = std::to_string(int(data["Server"]["Port"]));
         trap_ips = data["TrapIps"];
+        std::string user_name_encrypted = data["Ils"]["User"]["Name"];
+        std::string user_name;
+        std::string decrypt = "de -d ";
+        std::string caca;
+        auto cmd = subprocess::command{decrypt + user_name_encrypted};
+        cmd > user_name;
+        cmd >= caca;
+
+        try {
+            cmd.run();
+        } catch (...) {
+            user_name = "unknown";
+        }
+        trim(user_name);
 
         std::vector<std::vector<std::string>> table_content;
         table_content.push_back({"Parameter", "Value"});
         table_content.push_back({"Ils Address", ils_address});
         table_content.push_back({"Ils Port", ils_port});
         table_content.push_back({"Server Port", server_port});
+        table_content.push_back({"User Name", user_name});
         for (const auto ip : trap_ips) {
             table_content.push_back({"Trap IP", ip});
         }
@@ -288,7 +325,7 @@ Component DummyWindowContent()
                 str = "No messages";
             }
             auto content = Renderer([=] { return logRender(str); });
-            
+
             auto scrollable_content = Renderer(content, [&, content] {
                 return content->Render() | focusPositionRelative(scroll_x, scroll_y) | frame | flex;
             });
@@ -333,11 +370,46 @@ Component DummyWindowContent()
 int main()
 {
     auto screen = ScreenInteractive::Fullscreen();
+    std::string password_text;
+    int password_count = 0;
+    fs::path Path(R"(/etc/pasarela/settings.json)");
+    std::fstream configFile(Path);
+    std::string password_plain;
+    auto data = json::parse(configFile);
+
+    std::string password_encrypted = data["Server"]["Password"];
+    std::string decrypt = "de -d ";
+    std::string caca;
+    auto cmd = subprocess::command{decrypt + password_encrypted};
+    cmd > password_plain;
+    cmd >= caca;
+
+    try {
+        cmd.run();
+    } catch (...) {
+        password_encrypted = "nolosabeNadie!";
+    }
+    trim(password_plain);
 
     int shift = 0;
     bool shown_exit = false;
     bool shown_reboot = false;
     bool shown_save = false;
+    bool shown_login = false;
+    bool system_logged = false;
+
+    auto run_login = [&] {
+        if (password_text == password_plain) {
+            system_logged = true;
+            password_count = 0;
+            screen.Exit();
+        } else {
+            if (password_count > 3)
+                screen.Exit();
+            else
+                ++password_count;
+        }
+    };
     auto run_exit = [&] { screen.Exit(); };
     auto run_reboot = [&] {
         subprocess::command cmd{"sudo /sbin/reboot"};
@@ -363,13 +435,57 @@ int main()
     auto show_reboot = [&] { shown_reboot = true; };
     auto cancel_save = [&] { shown_save = false; };
     auto show_save = [&] { shown_save = true; };
+    auto cancel_login = [&] {
+        shown_login = false;
+        screen.Exit();
+    };
+    auto show_login = [&] { shown_login = true; };
+
     const std::string &label_exit = "Exit";
     const std::string &label_reboot = "Reboot";
     const std::string &label_save = "Save";
+    const std::string &label_login = "Login";
+
     auto component_exit = ModalComponent(run_exit, cancel_exit, label_exit);
     auto component_reboot = ModalComponent(run_reboot, cancel_reboot, label_reboot);
     auto component_save = ModalComponent(run_save, cancel_save, label_save);
 
+    //// LOGIN
+
+    auto login_button = Button(label_login, run_login, button_style);
+    auto cancel_login_button = Button(" Cancel ", cancel_login, button_style);
+    auto label_password = text("Password");
+    auto password_input_option = InputOption();
+    password_input_option.password = true;
+    password_input_option.multiline = false;
+    auto input_password = Input(&password_text, "", password_input_option);
+    auto password_component = Container::Vertical(
+        {Container::Horizontal({input_password}),
+         Container::Vertical({login_button, cancel_login_button})});
+    auto login_renderer = Renderer(password_component, [&] {
+        auto input_win = window(
+            text("Login"),
+            vbox(
+                {hbox({
+                     text("Password: "),
+                     input_password->Render(),
+                 }) | size(WIDTH, EQUAL, 20)
+                     | size(HEIGHT, EQUAL, 1),
+                 filler(),
+                 separator(),
+                 hbox({
+                     login_button->Render(),
+                     separatorEmpty(),
+                     cancel_login_button->Render(),
+                 })}));
+        return vbox({
+                   hbox({
+                       input_win,
+                       filler(),
+                   }) | size(HEIGHT, LESS_THAN, 8),
+               })
+               | flex_grow;
+    });
     // ---------------------------------------------------------------------------
     // Compiler
     // ---------------------------------------------------------------------------
@@ -571,6 +687,7 @@ int main()
     auto button_exit = Button(label_exit, show_exit, ButtonOption::Animated());
     auto button_reboot = Button(label_reboot, show_reboot, ButtonOption::Animated());
     auto button_save = Button(label_save, show_save, ButtonOption::Animated());
+    auto button_login = Button(label_login, show_login, ButtonOption::Animated());
 
     auto main_container = Container::Vertical({
         Container::Horizontal({
@@ -580,6 +697,9 @@ int main()
             button_exit,
         }),
         tab_content,
+    });
+    auto login_container = Container::Horizontal({
+        button_login,
     });
 
     auto main_renderer = Renderer(main_container, [&] {
@@ -597,11 +717,23 @@ int main()
             tab_content->Render() | flex,
         });
     });
+    auto logout_renderer = Renderer(login_container, [&] {
+        return vbox({
+            text("Gateway Login") | bold | hcenter,
+            hbox({
+                separatorEmpty() | flex,
+                button_login->Render(),
+            }),
+        });
+    });
     main_renderer |= Modal(component_save, &shown_save);
     main_renderer |= Modal(component_reboot, &shown_reboot);
     main_renderer |= Modal(component_exit, &shown_exit);
+    logout_renderer = logout_renderer |= Modal(login_renderer, &shown_login);
 
-    screen.Loop(main_renderer);
-
+    screen.Loop(logout_renderer);
+    screen.Clear();
+    if (system_logged)
+        screen.Loop(main_renderer);
     return 0;
 }

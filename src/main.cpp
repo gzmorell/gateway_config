@@ -2,28 +2,28 @@
 // Use of this source code is governed by the MIT license that can be found in
 // the LICENSE file.
 // #include <stddef.h>    // for size_t
-#include <array>  // for array
-#include <atomic> // for atomic
+#include <array> // for array
 // #include <chrono>      // for operator""s, chrono_literals
 // #include <cmath>       // for sin
 #include <functional> // for ref, reference_wrapper, function
 // #include <memory>      // for allocator, shared_ptr, __shared_ptr_access
+#include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <regex>
 #include <sstream>
 #include <string> // for string, basic_string, char_traits, operator+, to_string
 #include <string>
-#include <thread>  // for sleep_for, thread
 #include <utility> // for move
 #include <vector>  // for vector
 
-// #include "../dom/color_info_sorted_2d.ipp"  // for ColorInfoSorted2D
 #include "ftxui/component/component.hpp" // for Checkbox, Renderer, Horizontal, Vertical, Input, Menu, Radiobox, ResizableSplitLeft, Tab
 #include "ftxui/component/component_base.hpp"     // for ComponentBase, Component
 #include "ftxui/component/component_options.hpp"  // for MenuOption, InputOption
 #include "ftxui/component/event.hpp"              // for Event, Event::Custom
 #include "ftxui/component/screen_interactive.hpp" // for Component, ScreenInteractive
 #include "ftxui/dom/elements.hpp" // for text, color, operator|, bgcolor, filler, Element, vbox, size, hbox, separator, flex, window, graph, EQUAL, paragraph, WIDTH, hcenter, Elements, bold, vscroll_indicator, HEIGHT, flexbox, hflow, border, frame, flex_grow, gauge, paragraphAlignCenter, paragraphAlignJustify, paragraphAlignLeft, paragraphAlignRight, dim, spinner, LESS_THAN, center, yframe, GREATER_THAN
+#include "ftxui/dom/table.hpp"
 // #include "ftxui/dom/flexbox_config.hpp"  // for FlexboxConfig
 #include "ftxui/screen/color.hpp" // for Color, Color::BlueLight, Color::RedLight, Color::Black, Color::Blue, Color::Cyan, Color::CyanLight, Color::GrayDark, Color::GrayLight, Color::Green, Color::GreenLight, Color::Magenta, Color::MagentaLight, Color::Red, Color::White, Color::Yellow, Color::YellowLight, Color::Default, Color::Palette256, ftxui
 // #include "ftxui/screen/color_info.hpp"  // for ColorInfo
@@ -32,9 +32,203 @@
 
 using namespace ftxui;
 using namespace subprocess::literals;
+using json = nlohmann::json;
+namespace fs = std::filesystem;
 
 const auto button_style = ButtonOption::Animated();
 
+namespace ftxui {
+
+class ScrollerBase : public ComponentBase
+{
+public:
+    ScrollerBase(Component child) { Add(child); }
+
+private:
+    Element Render() final
+    {
+        auto focused = Focused() ? focus : ftxui::select;
+        auto style = Focused() ? inverted : nothing;
+
+        Element background = ComponentBase::Render();
+        background->ComputeRequirement();
+        size_ = background->requirement().min_y;
+        return dbox({
+                   std::move(background),
+                   vbox({
+                       text(L"") | size(HEIGHT, EQUAL, selected_),
+                       text(L"") | style | focused,
+                   }),
+               })
+               | vscroll_indicator | yframe | yflex | reflect(box_);
+    }
+
+    bool OnEvent(Event event) final
+    {
+        if (event.is_mouse() && box_.Contain(event.mouse().x, event.mouse().y))
+            TakeFocus();
+
+        int selected_old = selected_;
+        if (event == Event::ArrowUp || event == Event::Character('k')
+            || (event.is_mouse() && event.mouse().button == Mouse::WheelUp)) {
+            selected_--;
+        }
+        if ((event == Event::ArrowDown || event == Event::Character('j')
+             || (event.is_mouse() && event.mouse().button == Mouse::WheelDown))) {
+            selected_++;
+        }
+        if (event == Event::PageDown)
+            selected_ += box_.y_max - box_.y_min;
+        if (event == Event::PageUp)
+            selected_ -= box_.y_max - box_.y_min;
+        if (event == Event::Home)
+            selected_ = 0;
+        if (event == Event::End)
+            selected_ = size_;
+
+        selected_ = std::max(0, std::min(size_ - 1, selected_));
+        return selected_old != selected_;
+    }
+
+    bool Focusable() const final { return true; }
+
+    int selected_ = 0;
+    int size_ = 0;
+    Box box_;
+};
+
+Component Scroller(Component child)
+{
+    return Make<ScrollerBase>(std::move(child));
+}
+} // namespace ftxui
+
+Component NetworkConfig()
+{
+    auto renderer = Renderer([=] {
+        std::fstream configFile;
+        fs::path Path(R"(/etc/network/interfaces)");
+        std::string data;
+        std::stringstream ss;
+        std::string address;
+        std::string mask;
+        std::string gateway;
+        std::string interface;
+        // std::cout << "Trying to open the file" << std::endl;
+        configFile.open(Path, std::ios::in);
+        if (configFile.is_open()) {
+            ss << configFile.rdbuf();
+            data = ss.str();
+        }
+        configFile.close();
+        std::regex addressPattern("address ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
+        std::regex maskPattern("mask ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
+        std::regex gatewayPattern("gateway ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
+        std::regex interfacePattern("iface (.*) inet static");
+        std::smatch match;
+        if (std::regex_search(data, match, addressPattern)) {
+            if (match.size() > 1)
+                address = match[1];
+        };
+        if (std::regex_search(data, match, maskPattern)) {
+            if (match.size() > 1)
+                mask = match[1];
+        };
+        if (std::regex_search(data, match, gatewayPattern)) {
+            if (match.size() > 1)
+                gateway = match[1];
+        };
+        if (std::regex_search(data, match, interfacePattern)) {
+            if (match.size() > 1)
+                interface = match[1];
+        };
+
+        std::vector<std::vector<std::string>> table_content;
+        table_content.push_back({"Parameter", "Value"});
+        table_content.push_back({"Interface", interface});
+        table_content.push_back({"Address", address});
+        table_content.push_back({"Mask", mask});
+        table_content.push_back({"Gateway", address});
+        auto table = Table(table_content);
+
+        table.SelectAll().Border(LIGHT);
+
+        // Add border around the first column.
+        table.SelectColumn(0).Border(LIGHT);
+
+        // Make first row bold with a double border.
+        table.SelectRow(0).Decorate(bold);
+        table.SelectRow(0).SeparatorVertical(LIGHT);
+        table.SelectRow(0).Border(DOUBLE);
+
+        // Align right the "Release date" column.
+        table.SelectColumn(1).DecorateCells(align_right);
+
+        // Select row from the second to the last.
+        auto content = table.SelectRows(1, -1);
+        // Alternate in between 3 colors.
+        content.DecorateCellsAlternateRow(color(Color::Blue), 2, 0);
+        content.DecorateCellsAlternateRow(color(Color::Cyan), 2, 1);
+        auto tb = vbox(std::move(table.Render()));
+
+        return tb;
+    });
+    //Renderer([=] { return nonWrappingParagraph(str); });
+    return renderer;
+}
+
+Component GatewayConfig()
+{
+    auto renderer = Renderer([=] {
+        fs::path Path(R"(/etc/pasarela/settings.json)");
+        std::fstream configFile(Path);
+        std::string ils_address;
+        std::string ils_port;
+        std::string server_port;
+        std::vector<std::string> trap_ips;
+        // std::cout << "Trying to open the file" << std::endl;
+        auto data = json::parse(configFile);
+
+        ils_address = data["Ils"]["IpAddress"];
+        ils_port = std::to_string(int(data["Ils"]["Port"]));
+        server_port = std::to_string(int(data["Server"]["Port"]));
+        trap_ips = data["TrapIps"];
+
+        std::vector<std::vector<std::string>> table_content;
+        table_content.push_back({"Parameter", "Value"});
+        table_content.push_back({"Ils Address", ils_address});
+        table_content.push_back({"Ils Port", ils_port});
+        table_content.push_back({"Server Port", server_port});
+        for (const auto ip : trap_ips) {
+            table_content.push_back({"Trap IP", ip});
+        }
+        auto table = Table(table_content);
+
+        table.SelectAll().Border(LIGHT);
+
+        // Add border around the first column.
+        table.SelectColumn(0).Border(LIGHT);
+
+        // Make first row bold with a double border.
+        table.SelectRow(0).Decorate(bold);
+        table.SelectRow(0).SeparatorVertical(LIGHT);
+        table.SelectRow(0).Border(DOUBLE);
+
+        // Align right the "Release date" column.
+        table.SelectColumn(1).DecorateCells(align_right);
+
+        // Select row from the second to the last.
+        auto content = table.SelectRows(1, -1);
+        // Alternate in between 3 colors.
+        content.DecorateCellsAlternateRow(color(Color::Blue), 2, 0);
+        content.DecorateCellsAlternateRow(color(Color::Cyan), 2, 1);
+        auto tb = vbox(std::move(table.Render()));
+
+        return tb;
+    });
+    //Renderer([=] { return nonWrappingParagraph(str); });
+    return renderer;
+}
 Component ModalComponent(
     std::function<void()> do_action, std::function<void()> do_cancel, const std::string &action_text)
 {
@@ -68,7 +262,7 @@ Elements Split(std::string the_text)
     return output;
 }
 
-Element nonWrappingParagraph(std::string the_text)
+Element logRender(std::string the_text)
 {
     Elements lines;
     for (auto &line : Split(std::move(the_text)))
@@ -93,8 +287,8 @@ Component DummyWindowContent()
             } catch (...) {
                 str = "No messages";
             }
-            auto content = Renderer([=] { return nonWrappingParagraph(str); });
-
+            auto content = Renderer([=] { return logRender(str); });
+            
             auto scrollable_content = Renderer(content, [&, content] {
                 return content->Render() | focusPositionRelative(scroll_x, scroll_y) | frame | flex;
             });
@@ -129,6 +323,8 @@ Component DummyWindowContent()
                     Renderer([] { return text(L"x"); }),
                 }),
             }));
+
+            Add(Container::Vertical({content}));
         }
     };
     return Make<Impl>();
@@ -341,17 +537,34 @@ int main()
     // ---------------------------------------------------------------------------
     // Tabs
     // ---------------------------------------------------------------------------
+    //
+
+    auto log_renderer = Renderer([] {
+        std::string str;
+        try {
+            ("cat /var/log/messages"_cmd | "grep rms"_cmd > str).run();
+        } catch (...) {
+            str = "No messages";
+        }
+        return logRender(str);
+    });
+
+    auto scroller = Scroller(log_renderer);
 
     int tab_index = 0;
     std::vector<std::string> tab_entries = {
+        "Network",
+        "Gateway",
         "Config",
         "Logs",
     };
     auto tab_selection = Menu(&tab_entries, &tab_index, MenuOption::HorizontalAnimated());
     auto tab_content = Container::Tab(
         {
+            NetworkConfig(),
+            GatewayConfig(),
             compiler_renderer,
-            DummyWindowContent(),
+            scroller,
         },
         &tab_index);
 

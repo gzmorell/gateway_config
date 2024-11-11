@@ -377,19 +377,23 @@ int main()
     std::string password_plain;
     auto data = json::parse(configFile);
 
-    std::string password_encrypted = data["Server"]["Password"];
-    std::string decrypt = "de -d ";
-    std::string caca;
-    auto cmd = subprocess::command{decrypt + password_encrypted};
-    cmd > password_plain;
-    cmd >= caca;
-
     try {
-        cmd.run();
+        std::string password_encrypted = data["Server"]["Passwor"];
+        std::string decrypt = "de -d ";
+        std::string caca;
+        auto cmd = subprocess::command{decrypt + password_encrypted};
+        cmd > password_plain;
+        cmd >= caca;
+
+        try {
+            cmd.run();
+            trim(password_plain);
+        } catch (...) {
+            password_encrypted = "nolosabeNadie!";
+        }
     } catch (...) {
-        password_encrypted = "nolosabeNadie!";
+        password_plain = "nolosabeNadie!";
     }
-    trim(password_plain);
 
     int shift = 0;
     bool shown_exit = false;

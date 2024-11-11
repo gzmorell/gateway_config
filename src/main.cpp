@@ -59,6 +59,177 @@ inline void trim(std::string &s)
     ltrim(s);
 }
 
+struct NetWorkConfig
+{
+    std::string interface = "eth0";
+    std::string address = "192.168.1.158";
+    std::string netmask = "255.255.255.0";
+    std::string gateway = "192.168.1.1";
+};
+
+struct GatewayConfig
+{
+    std::string version = "";
+    std::string ils_address = "192.168.1.156";
+    int ils_port = 3001;
+    std::string master_password = "MASTER1 MASTER2 MASTER3";
+    std::string user_name = "GATEWAY";
+    std::string user_password = "GATEWAY1 GATEWAY2 GATEWAY3";
+    int server_port = 3001;
+    std::string server_password = "nolosabeNadie!";
+    std::string priority_address = "0.0.0.0";
+    std::vector<std::string> trap_ips = {"10.0.0.2"};
+};
+
+void load_network_config(NetWorkConfig &config)
+{
+    std::fstream configFile;
+    fs::path Path(R"(/etc/network/interfaces)");
+    std::string data;
+    std::stringstream ss;
+    // std::cout << "Trying to open the file" << std::endl;
+    configFile.open(Path, std::ios::in);
+    if (configFile.is_open()) {
+        ss << configFile.rdbuf();
+        data = ss.str();
+    } else
+        return;
+    configFile.close();
+    std::regex addressPattern("address ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
+    std::regex maskPattern("mask ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
+    std::regex gatewayPattern("gateway ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
+    std::regex interfacePattern("iface (.*) inet static");
+    std::smatch match;
+    if (std::regex_search(data, match, addressPattern)) {
+        if (match.size() > 1)
+            config.address = match[1];
+    };
+    if (std::regex_search(data, match, maskPattern)) {
+        if (match.size() > 1)
+            config.netmask = match[1];
+    };
+    if (std::regex_search(data, match, gatewayPattern)) {
+        if (match.size() > 1)
+            config.gateway = match[1];
+    };
+    if (std::regex_search(data, match, interfacePattern)) {
+        if (match.size() > 1)
+            config.interface = match[1];
+    };
+}
+
+void load_gateway_config(GatewayConfig &gw_config)
+{
+    fs::path Path(R"(/etc/pasarela/settings.json)");
+    std::fstream configFile(Path);
+    // std::cout << "Trying to open the file" << std::endl;
+    try {
+        auto data = json::parse(configFile);
+        try {
+            std::string ils_address;
+            ils_address = data["Ils"]["IpAddress"];
+            gw_config.ils_address = ils_address;
+        } catch (...) {
+        }
+        try {
+            int ils_port;
+            ils_port = data["Ils"]["Port"];
+            gw_config.ils_port = ils_port;
+        } catch (...) {
+        }
+        try {
+            int server_port;
+            server_port = data["Server"]["Port"];
+            gw_config.server_port = server_port;
+        } catch (...) {
+        }
+        try {
+            std::string user_name_encrypted = data["Ils"]["User"]["Name"];
+            std::string user_name;
+            std::string decrypt = "de -d ";
+            std::string caca;
+            auto cmd = subprocess::command{decrypt + user_name_encrypted};
+            cmd > user_name;
+            cmd >= caca;
+            try {
+                cmd.run();
+                trim(user_name);
+                gw_config.user_name = user_name;
+            } catch (...) {
+            }
+        } catch (...) {
+        }
+        try {
+            std::vector<std::string> trap_ips;
+            trap_ips = data["TrapIps"];
+            gw_config.trap_ips = trap_ips;
+        } catch (...) {
+        }
+        try {
+            std::string version;
+            version = data["Version"];
+            gw_config.version = version;
+        } catch (...) {
+        }
+        try {
+            std::string priority_address;
+            priority_address = data["Server"]["PriorityAddress"];
+            gw_config.priority_address = priority_address;
+        } catch (...) {
+        }
+        try {
+            std::string user_password_encrypted = data["Ils"]["User"]["Passwords"];
+            std::string user_password;
+            std::string decrypt = "de -d ";
+            std::string caca;
+            auto cmd = subprocess::command{decrypt + user_password_encrypted};
+            cmd > user_password;
+            cmd >= caca;
+            try {
+                cmd.run();
+                trim(user_password);
+                gw_config.user_password = user_password;
+            } catch (...) {
+            }
+        } catch (...) {
+        }
+        try {
+            std::string master_password_encrypted = data["Ils"]["Master"];
+            std::string master_password;
+            std::string decrypt = "de -d ";
+            std::string caca;
+            auto cmd = subprocess::command{decrypt + master_password_encrypted};
+            cmd > master_password;
+            cmd >= caca;
+            try {
+                cmd.run();
+                trim(master_password);
+                gw_config.master_password = master_password;
+            } catch (...) {
+            }
+        } catch (...) {
+        }
+        try {
+            std::string server_password_encrypted = data["Server"]["Password"];
+            std::string server_password;
+            std::string decrypt = "de -d ";
+            std::string caca;
+            auto cmd = subprocess::command{decrypt + server_password_encrypted};
+            cmd > server_password;
+            cmd >= caca;
+            try {
+                cmd.run();
+                trim(server_password);
+                gw_config.server_password = server_password;
+            } catch (...) {
+            }
+        } catch (...) {
+        }
+    } catch (...) {
+        return;
+    }
+}
+
 namespace ftxui {
 
 class ScrollerBase : public ComponentBase
@@ -125,52 +296,17 @@ Component Scroller(Component child)
 }
 } // namespace ftxui
 
-Component NetworkConfig()
+Component network_config()
 {
     auto renderer = Renderer([=] {
-        std::fstream configFile;
-        fs::path Path(R"(/etc/network/interfaces)");
-        std::string data;
-        std::stringstream ss;
-        std::string address;
-        std::string mask;
-        std::string gateway;
-        std::string interface;
-        // std::cout << "Trying to open the file" << std::endl;
-        configFile.open(Path, std::ios::in);
-        if (configFile.is_open()) {
-            ss << configFile.rdbuf();
-            data = ss.str();
-        }
-        configFile.close();
-        std::regex addressPattern("address ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
-        std::regex maskPattern("mask ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
-        std::regex gatewayPattern("gateway ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
-        std::regex interfacePattern("iface (.*) inet static");
-        std::smatch match;
-        if (std::regex_search(data, match, addressPattern)) {
-            if (match.size() > 1)
-                address = match[1];
-        };
-        if (std::regex_search(data, match, maskPattern)) {
-            if (match.size() > 1)
-                mask = match[1];
-        };
-        if (std::regex_search(data, match, gatewayPattern)) {
-            if (match.size() > 1)
-                gateway = match[1];
-        };
-        if (std::regex_search(data, match, interfacePattern)) {
-            if (match.size() > 1)
-                interface = match[1];
-        };
-
+        NetWorkConfig net_config;
+        load_network_config(net_config);
         std::vector<std::vector<std::string>> table_content;
         table_content.push_back({"Parameter", "Value"});
-        table_content.push_back({"Interface", interface});
-        table_content.push_back({"Address", address});
-        table_content.push_back({"Mask", mask});
-        table_content.push_back({"Gateway", address});
+        table_content.push_back({"Interface", net_config.interface});
+        table_content.push_back({"Address", net_config.address});
+        table_content.push_back({"Mask", net_config.netmask});
+        table_content.push_back({"Gateway", net_config.gateway});
         auto table = Table(table_content);
 
         table.SelectAll().Border(LIGHT);
@@ -199,44 +335,18 @@ Component NetworkConfig()
     return renderer;
 }
 
-Component GatewayConfig()
+Component gateway_config()
 {
     auto renderer = Renderer([=] {
-        fs::path Path(R"(/etc/pasarela/settings.json)");
-        std::fstream configFile(Path);
-        std::string ils_address;
-        std::string ils_port;
-        std::string server_port;
-        std::vector<std::string> trap_ips;
-        // std::cout << "Trying to open the file" << std::endl;
-        auto data = json::parse(configFile);
-
-        ils_address = data["Ils"]["IpAddress"];
-        ils_port = std::to_string(int(data["Ils"]["Port"]));
-        server_port = std::to_string(int(data["Server"]["Port"]));
-        trap_ips = data["TrapIps"];
-        std::string user_name_encrypted = data["Ils"]["User"]["Name"];
-        std::string user_name;
-        std::string decrypt = "de -d ";
-        std::string caca;
-        auto cmd = subprocess::command{decrypt + user_name_encrypted};
-        cmd > user_name;
-        cmd >= caca;
-
-        try {
-            cmd.run();
-        } catch (...) {
-            user_name = "unknown";
-        }
-        trim(user_name);
-
+        GatewayConfig gw_config;
+        load_gateway_config(gw_config);
         std::vector<std::vector<std::string>> table_content;
         table_content.push_back({"Parameter", "Value"});
-        table_content.push_back({"Ils Address", ils_address});
-        table_content.push_back({"Ils Port", ils_port});
-        table_content.push_back({"Server Port", server_port});
-        table_content.push_back({"User Name", user_name});
-        for (const auto ip : trap_ips) {
+        table_content.push_back({"Ils Address", gw_config.ils_address});
+        table_content.push_back({"Ils Port", std::to_string(gw_config.ils_port)});
+        table_content.push_back({"Server Port", std::to_string(gw_config.server_port)});
+        table_content.push_back({"User Name", gw_config.user_name});
+        for (const auto ip : gw_config.trap_ips) {
             table_content.push_back({"Trap IP", ip});
         }
         auto table = Table(table_content);
@@ -413,6 +523,7 @@ int main()
             else
                 ++password_count;
         }
+        password_text = "";
     };
     auto run_exit = [&] { screen.Exit(); };
     auto run_reboot = [&] {
@@ -448,7 +559,7 @@ int main()
     const std::string &label_exit = "Exit";
     const std::string &label_reboot = "Reboot";
     const std::string &label_save = "Save";
-    const std::string &label_login = "Login";
+    const std::string &label_login = " Login ";
 
     auto component_exit = ModalComponent(run_exit, cancel_exit, label_exit);
     auto component_reboot = ModalComponent(run_reboot, cancel_reboot, label_reboot);
@@ -462,6 +573,7 @@ int main()
     auto password_input_option = InputOption();
     password_input_option.password = true;
     password_input_option.multiline = false;
+    password_input_option.on_enter = run_login;
     auto input_password = Input(&password_text, "", password_input_option);
     auto password_component = Container::Vertical(
         {Container::Horizontal({input_password}),
@@ -470,191 +582,67 @@ int main()
         auto input_win = window(
             text("Login"),
             vbox(
-                {hbox({
-                     text("Password: "),
-                     input_password->Render(),
-                 }) | size(WIDTH, EQUAL, 20)
-                     | size(HEIGHT, EQUAL, 1),
-                 filler(),
+                {vbox({
+                     filler(),
+                     hbox({
+                         text("Password: "),
+                         input_password->Render(),
+                     }),
+                     filler(),
+                 }) | size(WIDTH, EQUAL, 30)
+                     | size(HEIGHT, EQUAL, 3),
                  separator(),
                  hbox({
-                     login_button->Render(),
+                     separatorEmpty() | flex,
+                     login_button->Render() | size(WIDTH, EQUAL, 10),
                      separatorEmpty(),
-                     cancel_login_button->Render(),
+                     cancel_login_button->Render() | size(WIDTH, EQUAL, 10),
+                     separatorEmpty() | flex,
                  })}));
         return vbox({
                    hbox({
                        input_win,
                        filler(),
-                   }) | size(HEIGHT, LESS_THAN, 8),
-               })
-               | flex_grow;
-    });
-    // ---------------------------------------------------------------------------
-    // Compiler
-    // ---------------------------------------------------------------------------
-
-    const std::vector<std::string> compiler_entries = {
-        "gcc",
-        "clang",
-        "emcc",
-        "game_maker",
-        "Ada compilers",
-        "ALGOL 60 compilers",
-        "ALGOL 68 compilers",
-        "Assemblers (Intel *86)",
-        "Assemblers (Motorola 68*)",
-        "Assemblers (Zilog Z80)",
-        "Assemblers (other)",
-        "BASIC Compilers",
-        "BASIC interpreters",
-        "Batch compilers",
-        "C compilers",
-        "Source-to-source compilers",
-        "C++ compilers",
-        "C# compilers",
-        "COBOL compilers",
-        "Common Lisp compilers",
-        "D compilers",
-        "DIBOL/DBL compilers",
-        "ECMAScript interpreters",
-        "Eiffel compilers",
-        "Fortran compilers",
-        "Go compilers",
-        "Haskell compilers",
-        "Java compilers",
-        "Pascal compilers",
-        "Perl Interpreters",
-        "PHP compilers",
-        "PL/I compilers",
-        "Python compilers",
-        "Scheme compilers and interpreters",
-        "Smalltalk compilers",
-        "Tcl Interpreters",
-        "VMS Interpreters",
-        "Rexx Interpreters",
-        "CLI compilers",
-    };
-
-    int compiler_selected = 0;
-    Component compiler = Radiobox(&compiler_entries, &compiler_selected);
-
-    std::array<std::string, 8> options_label = {
-        "-Wall",
-        "-Werror",
-        "-lpthread",
-        "-O3",
-        "-Wabi-tag",
-        "-Wno-class-conversion",
-        "-Wcomma-subscript",
-        "-Wno-conversion-null",
-    };
-    std::array<bool, 8> options_state = {
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-    };
-
-    std::vector<std::string> input_entries;
-    int input_selected = 0;
-    Component input = Menu(&input_entries, &input_selected);
-
-    auto input_option = InputOption();
-    std::string input_add_content;
-    input_option.on_enter = [&] {
-        input_entries.push_back(input_add_content);
-        input_add_content = "";
-    };
-    Component input_add = Input(&input_add_content, "input files", input_option);
-
-    std::string executable_content_;
-    Component executable_ = Input(&executable_content_, "executable");
-
-    Component flags = Container::Vertical({
-        Checkbox(options_label.data(), options_state.data()),
-        Checkbox(&options_label[1], &options_state[1]),
-        Checkbox(&options_label[2], &options_state[2]),
-        Checkbox(&options_label[3], &options_state[3]),
-        Checkbox(&options_label[4], &options_state[4]),
-        Checkbox(&options_label[5], &options_state[5]),
-        Checkbox(&options_label[6], &options_state[6]),
-        Checkbox(&options_label[7], &options_state[7]),
-    });
-
-    auto compiler_component = Container::Horizontal({
-        compiler,
-        flags,
-        Container::Vertical({
-            executable_,
-            Container::Horizontal({
-                input_add,
-                input,
-            }),
-        }),
-    });
-
-    auto render_command = [&] {
-        Elements line;
-        // Compiler
-        line.push_back(text(compiler_entries[compiler_selected]) | bold);
-        // flags
-        for (int i = 0; i < 8; ++i) {
-            if (options_state[i]) {
-                line.push_back(text(" "));
-                line.push_back(text(options_label[i]) | dim);
-            }
-        }
-        // Executable
-        if (!executable_content_.empty()) {
-            line.push_back(text(" -o ") | bold);
-            line.push_back(text(executable_content_) | color(Color::BlueLight) | bold);
-        }
-        // Input
-        for (auto &it : input_entries) {
-            line.push_back(text(" " + it) | color(Color::RedLight));
-        }
-        return line;
-    };
-
-    auto compiler_renderer = Renderer(compiler_component, [&] {
-        auto compiler_win = window(text("Compiler"), compiler->Render() | vscroll_indicator | frame);
-        auto flags_win = window(text("Flags"), flags->Render() | vscroll_indicator | frame);
-        auto executable_win = window(text("Executable:"), executable_->Render());
-        auto input_win = window(
-            text("Input"),
-            hbox({
-                vbox({
-                    hbox({
-                        text("Add: "),
-                        input_add->Render(),
-                    }) | size(WIDTH, EQUAL, 20)
-                        | size(HEIGHT, EQUAL, 1),
-                    filler(),
-                }),
-                separator(),
-                input->Render() | vscroll_indicator | frame | size(HEIGHT, EQUAL, 3) | flex,
-            }));
-        return vbox({
-                   hbox({
-                       compiler_win,
-                       flags_win,
-                       vbox({
-                           executable_win | size(WIDTH, EQUAL, 20),
-                           input_win | size(WIDTH, EQUAL, 60),
-                       }),
-                       filler(),
-                   }) | size(HEIGHT, LESS_THAN, 8),
-                   hflow(render_command()) | flex_grow,
+                   }) | size(HEIGHT, LESS_THAN, 12),
                })
                | flex_grow;
     });
 
-    // ---------------------------------------------------------------------------
+    //// TABLE
+
+    std::string value_1;
+    std::string value_2;
+    std::string value_3;
+    std::string value_4;
+
+    auto input_1 = Input(value_1, "input_1");
+    auto input_2 = Input(value_2, "input_2");
+    auto input_3 = Input(value_3, "input_3");
+    auto input_4 = Input(value_4, "input_3");
+
+    // Layout combine the components above, so that user can navigate them using
+    // arrow keys in both directions. Unfortunately, ftxui doesn't provide a
+    // Container::Array component, so this is a best effort here:
+    auto layout = Container::Vertical({
+        Container::Horizontal({input_1, input_2}),
+        Container::Horizontal({input_3, input_4}),
+    });
+
+    // Renderer override the `ComponentBase::Render` function of `layout`, to
+    // display them using a Table.
+    auto table_renderer = Renderer(layout, [&] {
+        auto table = Table({
+            {text(""), text("Columns 1"), text("Column2")},
+            {text("row_1"), input_1->Render(), input_2->Render()},
+            {text("row_2"), input_3->Render(), input_4->Render()},
+        });
+        table.SelectAll().Border(DOUBLE);
+        table.SelectAll().Separator(LIGHT);
+
+        return table.Render();
+    });
+
+    //     // ---------------------------------------------------------------------------
     // Tabs
     // ---------------------------------------------------------------------------
     //
@@ -681,9 +669,9 @@ int main()
     auto tab_selection = Menu(&tab_entries, &tab_index, MenuOption::HorizontalAnimated());
     auto tab_content = Container::Tab(
         {
-            NetworkConfig(),
-            GatewayConfig(),
-            compiler_renderer,
+            network_config(),
+            gateway_config(),
+            table_renderer,
             scroller,
         },
         &tab_index);

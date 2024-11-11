@@ -378,7 +378,7 @@ int main()
     auto data = json::parse(configFile);
 
     try {
-        std::string password_encrypted = data["Server"]["Passwor"];
+        std::string password_encrypted = data["Server"]["Password"];
         std::string decrypt = "de -d ";
         std::string caca;
         auto cmd = subprocess::command{decrypt + password_encrypted};

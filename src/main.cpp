@@ -635,9 +635,8 @@ int main()
     auto table_renderer = Renderer(layout, [&] {
         auto table = Table({
             {text(""), text("Present Value"), text("New Value")},
-            {text("Network Address"), input_1->Render(), input_2->Render()},
-            {text("Network Mask"), text_1->Render(), input_1->Render()},
-            {text("Network Gateway "), text_2->Render(), input_2->Render()},
+            {text("Network Address"), text_1->Render(), input_1->Render()},
+            {text("Network Mask"), text_2->Render(), input_2->Render()},
         });
         table.SelectAll().Border(DOUBLE);
         table.SelectAll().Separator(LIGHT);

@@ -13,7 +13,7 @@
 #include <regex>
 #include <sstream>
 #include <string> // for string, basic_string, char_traits, operator+, to_string
-#include <string>
+// #include <string>
 #include <utility> // for move
 #include <vector>  // for vector
 
@@ -69,7 +69,7 @@ struct NetWorkConfig
 
 struct GatewayConfig
 {
-    std::string version = "";
+    std::string version;
     std::string ils_address = "192.168.1.156";
     int ils_port = 3001;
     std::string master_password = "MASTER1 MASTER2 MASTER3";
@@ -86,18 +86,18 @@ void load_network_config(NetWorkConfig &config)
     std::fstream configFile;
     fs::path Path(R"(/etc/network/interfaces)");
     std::string data;
-    std::stringstream ss;
     // std::cout << "Trying to open the file" << std::endl;
     configFile.open(Path, std::ios::in);
     if (configFile.is_open()) {
+        std::stringstream ss;
         ss << configFile.rdbuf();
         data = ss.str();
     } else
         return;
     configFile.close();
-    std::regex addressPattern("address ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
-    std::regex maskPattern("mask ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
-    std::regex gatewayPattern("gateway ([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})");
+    std::regex addressPattern(R"(address ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}))");
+    std::regex maskPattern(R"(mask ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}))");
+    std::regex gatewayPattern(R"(gateway ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}))");
     std::regex interfacePattern("iface (.*) inet static");
     std::smatch match;
     if (std::regex_search(data, match, addressPattern)) {
@@ -235,7 +235,7 @@ namespace ftxui {
 class ScrollerBase : public ComponentBase
 {
 public:
-    ScrollerBase(Component child) { Add(child); }
+    explicit ScrollerBase(const Component &child) { Add(child); }
 
 private:
     Element Render() final
@@ -283,16 +283,16 @@ private:
         return selected_old != selected_;
     }
 
-    bool Focusable() const final { return true; }
+    [[nodiscard]] bool Focusable() const final { return true; }
 
     int selected_ = 0;
     int size_ = 0;
     Box box_;
 };
 
-Component Scroller(Component child)
+Component Logger(const Component& child)
 {
-    return Make<ScrollerBase>(std::move(child));
+    return Make<ScrollerBase>(child);
 }
 } // namespace ftxui
 
@@ -346,7 +346,7 @@ Component gateway_config()
         table_content.push_back({"Ils Port", std::to_string(gw_config.ils_port)});
         table_content.push_back({"Server Port", std::to_string(gw_config.server_port)});
         table_content.push_back({"User Name", gw_config.user_name});
-        for (const auto ip : gw_config.trap_ips) {
+        for (const auto& ip : gw_config.trap_ips) {
             table_content.push_back({"Trap IP", ip});
         }
         auto table = Table(table_content);
@@ -379,11 +379,11 @@ Component gateway_config()
 Component ModalComponent(
     std::function<void()> do_action, std::function<void()> do_cancel, const std::string &action_text)
 {
-    auto leftButton = Button(action_text, do_action, button_style);
-    auto rightButton = Button(" Cancel ", do_cancel, button_style);
+    auto leftButton = Button(action_text, std::move(do_action), button_style);
+    auto rightButton = Button(" Cancel ", std::move(do_cancel), button_style);
     auto component = Container::Vertical({leftButton, rightButton});
     // Polish how the two buttons are rendered
-    component |= Renderer([&](Element inner) {
+    component |= Renderer([&](const Element &inner) {
         FlexboxConfig config;
         config.justify_content = FlexboxConfig::JustifyContent::SpaceBetween;
         return vbox(
@@ -399,7 +399,7 @@ Component ModalComponent(
     return component;
 }
 
-Elements Split(std::string the_text)
+Elements Split(const std::string& the_text)
 {
     Elements output;
     std::stringstream ss(the_text);
@@ -409,10 +409,10 @@ Elements Split(std::string the_text)
     return output;
 }
 
-Element logRender(std::string the_text)
+Element logRender(const std::string& the_text)
 {
     Elements lines;
-    for (auto &line : Split(std::move(the_text)))
+    for (auto &line : Split(the_text))
         lines.push_back(line);
     return vbox(std::move(lines));
 }
@@ -489,7 +489,7 @@ int main()
 
     try {
         std::string password_encrypted = data["Server"]["Password"];
-        std::string decrypt = "de -d ";
+        std::string decrypt = "setup-gw -d ";
         std::string caca;
         auto cmd = subprocess::command{decrypt + password_encrypted};
         cmd > password_plain;
@@ -499,13 +499,13 @@ int main()
             cmd.run();
             trim(password_plain);
         } catch (...) {
-            password_encrypted = "nolosabeNadie!";
+            password_plain = "nolosabeNadie!";
         }
     } catch (...) {
         password_plain = "nolosabeNadie!";
     }
 
-    int shift = 0;
+    // int shift = 0;
     bool shown_exit = false;
     bool shown_reboot = false;
     bool shown_save = false;
@@ -615,26 +615,29 @@ int main()
     std::string value_3;
     std::string value_4;
 
-    auto input_1 = Input(value_1, "input_1");
-    auto input_2 = Input(value_2, "input_2");
-    auto input_3 = Input(value_3, "input_3");
-    auto input_4 = Input(value_4, "input_3");
+    // auto input_1 = Input(value_1, "input_1");
+    // auto input_2 = Input(value_2, "input_2");
+    auto text_1 = Renderer([] { return text("text 1");});
+    auto text_2 = Renderer([] { return text("text 2");});
+    auto input_1 = Input(value_3, "input_1");
+    auto input_2 = Input(value_4, "input_2");
 
     // Layout combine the components above, so that user can navigate them using
     // arrow keys in both directions. Unfortunately, ftxui doesn't provide a
     // Container::Array component, so this is a best effort here:
     auto layout = Container::Vertical({
-        Container::Horizontal({input_1, input_2}),
-        Container::Horizontal({input_3, input_4}),
+        Container::Horizontal({text_1, input_1}),
+        Container::Horizontal({text_2, input_2}),
     });
 
     // Renderer override the `ComponentBase::Render` function of `layout`, to
     // display them using a Table.
     auto table_renderer = Renderer(layout, [&] {
         auto table = Table({
-            {text(""), text("Columns 1"), text("Column2")},
-            {text("row_1"), input_1->Render(), input_2->Render()},
-            {text("row_2"), input_3->Render(), input_4->Render()},
+            {text(""), text("Present Value"), text("New Value")},
+            {text("Network Address"), input_1->Render(), input_2->Render()},
+            {text("Network Mask"), text_1->Render(), input_1->Render()},
+            {text("Network Gateway "), text_2->Render(), input_2->Render()},
         });
         table.SelectAll().Border(DOUBLE);
         table.SelectAll().Separator(LIGHT);
@@ -657,7 +660,7 @@ int main()
         return logRender(str);
     });
 
-    auto scroller = Scroller(log_renderer);
+    auto logger = Logger(log_renderer);
 
     int tab_index = 0;
     std::vector<std::string> tab_entries = {
@@ -672,7 +675,7 @@ int main()
             network_config(),
             gateway_config(),
             table_renderer,
-            scroller,
+            logger,
         },
         &tab_index);
 

@@ -41,7 +41,18 @@ FetchContent_MakeAvailable(json)
 
 # ------------------------------------------------------------------------------
 
-add_executable(gateway-config src/main.cpp)
+add_executable(gateway-config src/main.cpp
+        src/scrollerbase.h
+        src/util.h
+        src/components.h
+        src/elements.h
+        src/networksetting.cpp
+        src/networksetting.h
+        src/gatewaysetting.cpp
+        src/gatewaysetting.h
+        src/rcsusetting.cpp
+        src/rcsusetting.h
+)
 target_include_directories(gateway-config PRIVATE src)
 
 target_link_libraries(gateway-config

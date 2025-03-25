@@ -27,7 +27,7 @@ RcsuSetting::RcsuSetting()
         "Save",
         [this] {
             if (const auto ok = save()) {
-                nested("Config saved!", ok);
+                nested("Config saved to memory file!\nRemember to press Store to keep config.", ok);
             } else {
                 nested("Error saving!", ok);
             }

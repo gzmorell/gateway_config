@@ -78,7 +78,7 @@ int main()
         shown_save = false;
     };
     auto run_save = [&] {
-        subprocess::command cmd{"sudo /sbin/lbu ci"};
+        subprocess::command cmd{"sudo lbu ci"};
         try {
             cmd.run();
         } catch (...) {
@@ -100,7 +100,7 @@ int main()
 
     const std::string &label_exit = "Exit";
     const std::string &label_reboot = "Reboot";
-    const std::string &label_save = "Save";
+    const std::string &label_save = "Store";
     const std::string &label_login = " Login ";
 
     auto component_exit = ModalComponent(run_exit, cancel_exit, label_exit);

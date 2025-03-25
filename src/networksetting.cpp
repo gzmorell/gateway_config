@@ -9,8 +9,8 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
-
 #include <iostream>
+#include "util.h"
 
 NetworkSetting::NetworkSetting()
 {
@@ -23,9 +23,9 @@ NetworkSetting::NetworkSetting()
         [this] {
             auto ok = save();
             if (ok) {
-                std::cout << "ok" << std::endl;
+                nested("Config saved to memory file!\nRemember to press Store to keep config.", ok);
             } else {
-                std::cout << "error" << std::endl;
+                nested("Error saving!", ok);
             }
         },
         ButtonOption::Animated());

@@ -27,7 +27,7 @@ GatewaySetting::GatewaySetting()
         "Save",
         [this] {
             if (auto ok = save()) {
-                nested("Configuration Saved", ok);
+                nested("Config saved to memory file!\nRemember to press Store to keep config.", ok);
             } else {
                 nested("Error Saving Configuration !", ok);
             }

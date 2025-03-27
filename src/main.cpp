@@ -79,7 +79,7 @@ int main()
         shown_save = false;
     };
     auto run_save = [&] {
-        subprocess::command cmd{"sudo lbu ci"};
+        subprocess::command cmd{"sudo /usr/sbin/lbu ci"};
         try {
             cmd.run();
         } catch (...) {

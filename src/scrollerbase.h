@@ -15,7 +15,7 @@ public:
     explicit ScrollerBase(const Component &child) { Add(child); }
 
 private:
-    Element Render() override
+    Element OnRender() override
     {
         auto focused = Focused() ? focus : ftxui::select;
         auto style = Focused() ? inverted : nothing;

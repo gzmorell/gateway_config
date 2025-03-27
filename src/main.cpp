@@ -7,6 +7,7 @@
 #include <regex>
 #include <string> // for string, basic_string, char_traits, operator+, to_string
 #include <vector>  // for vector
+#include <iostream>
 
 #include "ftxui/component/component.hpp" // for Checkbox, Renderer, Horizontal, Vertical, Input, Menu, Radiobox, ResizableSplitLeft, Tab
 #include "ftxui/component/component_base.hpp"     // for ComponentBase, Component

@@ -13,7 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # --- Fetch FTXUI --------------------------------------------------------------
 include(FetchContent)
 
-set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+set(FETCHCONTENT_UPDATES_DISCONNECTED OFF)
 set(FETCHCONTENT_QUIET OFF)
 
 FetchContent_Declare(ftxui

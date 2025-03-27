@@ -14,7 +14,7 @@ using json = nlohmann::json;
 
 RcsuSetting::RcsuSetting()
 {
-    m_rca_modes = {"Listen", "Copy", "Command", "Virtual"};
+    m_rca_modes = {"Listen", "Virtual"};
     load();
     m_rca_address_input = InputIPV4(&m_rca_address);
     m_rca_local_port_input = Input(&m_rca_local_port);

@@ -30,7 +30,7 @@ FetchContent_Declare(ftxui-ip-input
   GIT_SHALLOW  TRUE
 )
 FetchContent_Declare(json 
-  URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+  URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
   GIT_PROGRESS TRUE
 )
 
